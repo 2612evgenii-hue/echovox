@@ -26,11 +26,16 @@ dist-ssr
 # SQLite (local / production data)
 data/*.sqlite
 
-# Vite dev mock news (optional)
+# Vite dev mock news / обращения (optional)
 data/dev-news.json
+data/dev-contacts.json
 
 # Uploaded news images (dev + production)
 public/uploads/dev-news/*
 !public/uploads/dev-news/.gitkeep
 uploads/news/*
 !uploads/news/.htaccess
+
+data/
+uploads/
+.env

@@ -19,6 +19,18 @@ type NewsRow = {
   image?: string | null
 }
 
+type ContactRow = {
+  id: number
+  name: string
+  phone: string
+  message: string
+  created_at: string
+}
+
+/** Как в `api/contact.php` и `src/lib/phone.ts` */
+const RU_PHONE_REGEX =
+  /^(\+7|7|8)?[\s-]?\(?[489][0-9]{2}\)?[\s-]?[0-9]{3}[\s-]?[0-9]{2}[\s-]?[0-9]{2}$/
+
 const DEV_NEWS_IMAGE_RE = /^\/uploads\/dev-news\/[a-f0-9]{20}\.(webp|jpg)$/i
 
 function parseNewsImageUpload(req: IncomingMessage): Promise<Buffer> {
@@ -112,6 +124,8 @@ function isLoggedIn(req: IncomingMessage): boolean {
 export function echovoxMockApiPlugin(): Plugin {
   let newsPath = ''
   let news: NewsRow[] = []
+  let contactsPath = ''
+  let contacts: ContactRow[] = []
 
   function loadNews() {
     try {
@@ -128,12 +142,29 @@ export function echovoxMockApiPlugin(): Plugin {
     fs.writeFileSync(newsPath, JSON.stringify(news, null, 2), 'utf8')
   }
 
+  function loadContacts() {
+    try {
+      const raw = fs.readFileSync(contactsPath, 'utf8')
+      const parsed = JSON.parse(raw) as unknown
+      contacts = Array.isArray(parsed) ? (parsed as ContactRow[]) : []
+    } catch {
+      contacts = []
+    }
+  }
+
+  function saveContacts() {
+    fs.mkdirSync(path.dirname(contactsPath), { recursive: true })
+    fs.writeFileSync(contactsPath, JSON.stringify(contacts, null, 2), 'utf8')
+  }
+
   return {
     name: 'echovox-mock-api',
     enforce: 'pre',
     configureServer(server) {
       newsPath = path.join(process.cwd(), 'data/dev-news.json')
       loadNews()
+      contactsPath = path.join(process.cwd(), 'data/dev-contacts.json')
+      loadContacts()
 
       /** Регистрируем до внутренних middleware Vite, чтобы /api не ушёл в SPA fallback. */
       server.middlewares.use(async (req, res, next) => {
@@ -296,7 +327,66 @@ export function echovoxMockApiPlugin(): Plugin {
           }
 
           if (pathname === '/api/contact.php' && method === 'POST') {
-            await readBody(req)
+            const raw = await readBody(req)
+            let j: Record<string, unknown> = {}
+            try {
+              j = JSON.parse(raw || '{}') as Record<string, unknown>
+            } catch {
+              j = {}
+            }
+            const name =
+              typeof j.name === 'string' ? j.name.trim().slice(0, 120) : ''
+            const phone =
+              typeof j.phone === 'string' ? j.phone.trim().slice(0, 40) : ''
+            const message =
+              typeof j.message === 'string' ? j.message.trim().slice(0, 4000) : ''
+            if (!name || !message || !RU_PHONE_REGEX.test(phone)) {
+              sendJson(res, 422, {
+                error: 'Проверьте имя, телефон и сообщение',
+              })
+              return
+            }
+            loadContacts()
+            const id =
+              contacts.length === 0
+                ? 1
+                : Math.max(...contacts.map((c) => c.id)) + 1
+            const row: ContactRow = {
+              id,
+              name,
+              phone,
+              message,
+              created_at: new Date().toISOString(),
+            }
+            contacts = [row, ...contacts]
+            saveContacts()
+            sendJson(res, 200, { ok: true })
+            return
+          }
+
+          if (pathname === '/api/contacts.php' && method === 'GET') {
+            if (!isLoggedIn(req)) {
+              sendJson(res, 401, { error: 'Требуется вход' })
+              return
+            }
+            loadContacts()
+            sendJson(res, 200, { contacts })
+            return
+          }
+
+          if (pathname === '/api/contacts.php' && method === 'DELETE') {
+            if (!isLoggedIn(req)) {
+              sendJson(res, 401, { error: 'Требуется вход' })
+              return
+            }
+            const id = Number(parsedUrl.searchParams.get('id') || '0')
+            if (!Number.isFinite(id) || id < 1) {
+              sendJson(res, 422, { error: 'Некорректный id' })
+              return
+            }
+            loadContacts()
+            contacts = contacts.filter((c) => c.id !== id)
+            saveContacts()
             sendJson(res, 200, { ok: true })
             return
           }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { Menu, Phone, Sparkles } from 'lucide-react'
+import logo from '@/assets/logo.jpg'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { useScrollToSection } from '@/hooks/useScrollToSection'
@@ -9,6 +10,7 @@ import { cn } from '@/lib/utils'
 
 const nav = [
   { href: '#about', label: 'О школе' },
+  { href: '#founder', label: 'О себе' },
   { href: '#news', label: 'Новости' },
   { href: '#contact', label: 'Контакты' },
 ] as const
@@ -265,11 +267,11 @@ export function SiteHeader({ showNewsNav = false }: SiteHeaderProps) {
           onClick={() => setOpen(false)}
         >
           <img
-            src="/Dlia-avatarki.jpg"
+            src={logo}
             width={44}
             height={44}
             alt="Echovox"
-            className="h-10 w-10 rounded-2xl border border-white/10 object-cover shadow-lg shadow-black/40 sm:h-11 sm:w-11"
+            className="h-9 w-auto rounded-2xl border border-white/10 object-cover shadow-lg shadow-black/40 sm:h-10"
             loading="eager"
             decoding="async"
             onError={(e) => {

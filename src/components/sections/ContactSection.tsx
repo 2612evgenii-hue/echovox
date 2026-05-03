@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import emailjs from '@emailjs/browser'
 import { toast } from 'sonner'
 import { Reveal } from '@/components/animations/Reveal'
 import { Button } from '@/components/ui/button'
@@ -6,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { apiJson } from '@/lib/api'
+import { EMAILJS_CONFIG, isEmailJsConfigured } from '@/lib/emailjs'
 import { isValidRuPhone } from '@/lib/phone'
 
 type FormState = {
@@ -49,7 +51,23 @@ export function ContactSection() {
           message: form.message.trim(),
         }),
       })
-      toast.success('Сообщение отправлено — скоро свяжемся!')
+      if (isEmailJsConfigured()) {
+        try {
+          await emailjs.send(
+            EMAILJS_CONFIG.serviceId,
+            EMAILJS_CONFIG.templateId,
+            {
+              name: form.name.trim(),
+              phone: form.phone.trim(),
+              message: form.message.trim(),
+            },
+            { publicKey: EMAILJS_CONFIG.publicKey },
+          )
+        } catch {
+          /* письмо не ушло, заявка в БД уже сохранена */
+        }
+      }
+      toast.success('Сообщение отправлено')
       setForm(initial)
       setErrors({})
     } catch (err) {
@@ -70,13 +88,22 @@ export function ContactSection() {
             Запишитесь на пробный разговор
           </h2>
           <p className="mt-4 text-zinc-400">
-            Оставьте контакты — Сергей перезвонит, уточнит цели и подберёт
-            удобное время. Или сразу по телефону:{' '}
+            Оставьте контакты, мы перезвоним, уточним цели и договоримся о времени.
+            Телефон:{' '}
             <a
               href="tel:+79042313359"
               className="font-semibold text-accent-gold hover:underline"
             >
               8 904 231 33 59
+            </a>
+            .{' '}
+            <a
+              href="https://vk.com/echovox"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-accent-violet hover:underline"
+            >
+              ВКонтакте
             </a>
             .
           </p>

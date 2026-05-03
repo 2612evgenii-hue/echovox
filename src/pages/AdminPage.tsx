@@ -2,7 +2,15 @@ import { useCallback, useEffect, useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ImagePlus, LogOut, Trash2, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  Eye,
+  ImagePlus,
+  LogOut,
+  MessageSquare,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,6 +25,7 @@ import {
 import { apiJson } from '@/lib/api'
 import { optimizeNewsImage } from '@/lib/optimizeNewsImage'
 import { uploadNewsImage } from '@/lib/uploadNewsImage'
+import type { ContactItem } from '@/types/contact'
 import type { NewsItem } from '@/types/news'
 
 function formatDate(iso: string) {
@@ -43,10 +52,17 @@ export function AdminPage() {
   const [body, setBody] = useState('')
   const [coverPath, setCoverPath] = useState<string | null>(null)
   const [coverBusy, setCoverBusy] = useState(false)
+  const [contacts, setContacts] = useState<ContactItem[]>([])
+  const [viewContact, setViewContact] = useState<ContactItem | null>(null)
 
   const refreshNews = useCallback(async () => {
     const data = await apiJson<{ news: NewsItem[] }>('/news.php')
     setNews(data.news)
+  }, [])
+
+  const refreshContacts = useCallback(async () => {
+    const data = await apiJson<{ contacts: ContactItem[] }>('/contacts.php')
+    setContacts(data.contacts)
   }, [])
 
   useEffect(() => {
@@ -56,7 +72,10 @@ export function AdminPage() {
         const me = await apiJson<{ ok: boolean }>('/me.php')
         if (!cancelled) {
           setSession(me.ok ? 'in' : 'out')
-          if (me.ok) await refreshNews()
+          if (me.ok) {
+            await refreshNews()
+            await refreshContacts()
+          }
         }
       } catch {
         if (!cancelled) setSession('out')
@@ -65,7 +84,7 @@ export function AdminPage() {
     return () => {
       cancelled = true
     }
-  }, [refreshNews])
+  }, [refreshContacts, refreshNews])
 
   const login = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -79,6 +98,7 @@ export function AdminPage() {
       setSession('in')
       toast.success('Добро пожаловать')
       await refreshNews()
+      await refreshContacts()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка входа')
     } finally {
@@ -92,6 +112,7 @@ export function AdminPage() {
       await apiJson<{ ok: boolean }>('/logout.php', { method: 'POST' })
       setSession('out')
       setNews([])
+      setContacts([])
       toast.success('Вы вышли')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Ошибка')
@@ -149,6 +170,23 @@ export function AdminPage() {
     }
   }
 
+  const removeContact = async (id: number) => {
+    if (!confirm('Удалить это обращение?')) return
+    setLoading(true)
+    try {
+      await apiJson<{ ok: boolean }>(`/contacts.php?id=${id}`, {
+        method: 'DELETE',
+      })
+      toast.success('Обращение удалено')
+      setViewContact((c) => (c?.id === id ? null : c))
+      await refreshContacts()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const remove = async (id: number) => {
     if (!confirm('Удалить эту новость?')) return
     setLoading(true)
@@ -192,7 +230,7 @@ export function AdminPage() {
             <CardHeader>
               <CardTitle>Админ-панель</CardTitle>
               <CardDescription>
-                Вход для публикации новостей (пароль задаётся в{' '}
+                Вход для публикации новостей и просмотра обращений (пароль в{' '}
                 <code className="text-zinc-300">api/config.php</code>).
               </CardDescription>
             </CardHeader>
@@ -225,10 +263,10 @@ export function AdminPage() {
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="font-display text-2xl font-black text-white sm:text-3xl">
-              Новости Echovox
+              Админка Echovox
             </h1>
             <p className="mt-1 text-sm text-zinc-400">
-              Создавайте короткие анонсы — они сразу появятся на главной.
+              Новости на главной и обращения из формы «Запись».
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -270,8 +308,8 @@ export function AdminPage() {
                 <div className="space-y-2">
                   <Label htmlFor={coverFieldId}>Обложка</Label>
                   <p className="text-xs text-zinc-500">
-                    По желанию. Файл сжимается в браузере до ~1120px и WebP —
-                    быстрее для посетителей.
+                    По желанию. В браузере файл ужимается примерно до 1120px и
+                    WebP, чтобы страница грузилась легче.
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
                     <Button
@@ -368,7 +406,7 @@ export function AdminPage() {
                               />
                             ) : (
                               <span className="block text-center text-zinc-600">
-                                —
+                                нет
                               </span>
                             )}
                           </td>
@@ -399,7 +437,187 @@ export function AdminPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="size-5 text-accent-violet" aria-hidden />
+              Обращения с сайта
+            </CardTitle>
+            <CardDescription>
+              Заявки из формы контактов (сохраняются в SQLite на сервере или в{' '}
+              <code className="text-zinc-400">data/dev-contacts.json</code> в
+              dev).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="overflow-x-auto rounded-xl border border-white/10">
+              <table className="w-full min-w-[520px] text-left text-sm">
+                <thead className="border-b border-white/10 bg-white/[0.03] text-xs uppercase tracking-wide text-zinc-500">
+                  <tr>
+                    <th className="px-3 py-3 font-medium">Дата</th>
+                    <th className="px-3 py-3 font-medium">Имя</th>
+                    <th className="px-3 py-3 font-medium">Телефон</th>
+                    <th className="min-w-[8rem] px-3 py-3 font-medium">
+                      Сообщение
+                    </th>
+                    <th className="w-28 px-2 py-3 text-right font-medium">
+                      Действия
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {contacts.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-4 py-8 text-center text-zinc-500"
+                      >
+                        Пока нет обращений
+                      </td>
+                    </tr>
+                  ) : (
+                    contacts.map((c) => {
+                      const preview =
+                        c.message.length > 80
+                          ? `${c.message.slice(0, 80)}…`
+                          : c.message
+                      return (
+                        <tr key={c.id} className="hover:bg-white/[0.02]">
+                          <td className="whitespace-nowrap px-3 py-3 text-zinc-400">
+                            {formatDate(c.created_at)}
+                          </td>
+                          <td className="max-w-[10rem] truncate px-3 py-3 font-medium text-zinc-100">
+                            {c.name}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 text-zinc-300">
+                            {c.phone}
+                          </td>
+                          <td className="max-w-xs px-3 py-3 text-zinc-400">
+                            {preview}
+                          </td>
+                          <td className="px-2 py-3 text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-zinc-400 hover:bg-white/10 hover:text-white"
+                              onClick={() => setViewContact(c)}
+                              aria-label="Просмотр"
+                            >
+                              <Eye className="size-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                              onClick={() => removeContact(c.id)}
+                              aria-label="Удалить"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {viewContact ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="contact-view-title"
+          onClick={() => setViewContact(null)}
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950 p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <h2
+                id="contact-view-title"
+                className="font-display text-lg font-bold text-white"
+              >
+                Обращение
+              </h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-zinc-400 hover:text-white"
+                onClick={() => setViewContact(null)}
+                aria-label="Закрыть"
+              >
+                <X className="size-5" />
+              </Button>
+            </div>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                  Дата
+                </dt>
+                <dd className="mt-1 text-zinc-200">
+                  {formatDate(viewContact.created_at)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                  Имя
+                </dt>
+                <dd className="mt-1 text-zinc-100">{viewContact.name}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                  Телефон
+                </dt>
+                <dd className="mt-1">
+                  <a
+                    href={`tel:${viewContact.phone.replace(/\s/g, '')}`}
+                    className="font-medium text-accent-gold hover:underline"
+                  >
+                    {viewContact.phone}
+                  </a>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                  Сообщение
+                </dt>
+                <dd className="mt-2 whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-3 text-zinc-200">
+                  {viewContact.message}
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setViewContact(null)}
+              >
+                Закрыть
+              </Button>
+              <Button
+                type="button"
+                variant="outlineGold"
+                className="text-red-400 hover:bg-red-500/10"
+                onClick={() => {
+                  void removeContact(viewContact.id)
+                }}
+              >
+                Удалить обращение
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
