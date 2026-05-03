@@ -1,0 +1,15 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Existing files and directories (assets, PHP API, uploaded logo)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # API handled by PHP files under /api/ (adjust if your host maps differently)
+  RewriteRule ^api/ - [L]
+
+  # SPA fallback
+  RewriteRule . /index.html [L]
+</IfModule>

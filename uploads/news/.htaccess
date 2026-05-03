@@ -1,0 +1,4 @@
+# Запрет выполнения скриптов в каталоге изображений
+<IfModule mod_php.c>
+  php_flag engine off
+</IfModule>
