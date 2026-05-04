@@ -178,11 +178,11 @@ export function HeroSection() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="relative mt-6 flex min-h-0 w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/[0.11] bg-zinc-950/50 shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl backdrop-saturate-150 sm:mt-8 sm:rounded-3xl sm:shadow-[0_16px_56px_rgba(0,0,0,0.5)] md:mt-0 md:rounded-3xl md:absolute md:right-0 md:top-0 md:h-full md:max-w-none md:w-[min(22.5rem,32vw)] lg:w-[min(24rem,30%)]"
+          className="relative mt-6 flex min-h-0 w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-zinc-950/[0.28] shadow-[0_8px_36px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-2xl backdrop-saturate-150 sm:mt-8 sm:bg-zinc-950/[0.32] sm:rounded-3xl sm:shadow-[0_12px_44px_rgba(0,0,0,0.32)] md:mt-0 md:rounded-3xl md:bg-zinc-950/[0.34] md:absolute md:right-0 md:top-0 md:h-full md:max-w-none md:w-[min(22.5rem,32vw)] lg:w-[min(24rem,30%)]"
         >
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.07] via-transparent to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
           <div className="relative flex min-h-0 flex-col md:h-full">
-            <div className="relative min-h-[10.5rem] w-full flex-1 overflow-hidden border-b border-white/10 sm:min-h-[12rem] md:min-h-0">
+            <div className="relative min-h-[10.5rem] w-full flex-1 overflow-hidden border-b border-white/[0.07] sm:min-h-[12rem] md:min-h-0">
               <img
                 src={sergeyPhoto}
                 alt="Сергей"
@@ -192,7 +192,7 @@ export function HeroSection() {
                 fetchPriority="high"
                 className="h-full min-h-[10rem] w-full object-cover object-[center_15%] sm:min-h-[11.5rem] md:min-h-0"
               />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-zinc-950/95 via-zinc-950/25 to-transparent sm:h-28" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-zinc-950/70 via-zinc-950/18 to-transparent sm:h-28" />
               <p className="absolute bottom-3 left-0 right-0 text-center font-display text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
                 Echovox
               </p>
@@ -221,7 +221,7 @@ export function HeroSection() {
                     key={label}
                     role="listitem"
                     title={label}
-                    className="inline-flex size-9 items-center justify-center rounded-full border border-white/[0.11] bg-white/[0.05] text-accent-gold shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] sm:size-11"
+                    className="inline-flex size-9 items-center justify-center rounded-full border border-white/[0.09] bg-white/[0.035] text-accent-gold shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:size-11"
                   >
                     <Icon className="size-4 shrink-0 sm:size-[1.05rem]" aria-hidden />
                     <span className="sr-only">{label}</span>
@@ -231,7 +231,7 @@ export function HeroSection() {
               <button
                 type="button"
                 onClick={() => scrollTo('#founder')}
-                className="group flex w-full items-center justify-between gap-2 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-left text-[11px] font-medium text-zinc-200 transition-colors hover:border-white/[0.16] hover:bg-white/[0.07] hover:text-white sm:gap-3 sm:rounded-xl sm:px-4 sm:py-3.5 sm:text-sm"
+                className="group flex w-full items-center justify-between gap-2 rounded-lg border border-white/[0.09] bg-white/[0.03] px-3 py-2.5 text-left text-[11px] font-medium text-zinc-200 transition-colors hover:border-white/[0.1] hover:bg-white/[0.06] hover:text-white sm:gap-3 sm:rounded-xl sm:px-4 sm:py-3.5 sm:text-sm"
               >
                 <span>Развернуть о педагоге</span>
                 <ChevronRight
