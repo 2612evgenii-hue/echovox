@@ -1,6 +1,12 @@
 import { Mic2, Radio, Stars, Trophy, Waves, Headphones } from 'lucide-react'
 import { Reveal } from '@/components/animations/Reveal'
 import { cn } from '@/lib/utils'
+import bento1 from '@/assets/im1.jpeg'
+import bento2 from '@/assets/im2.jpeg'
+import bento3 from '@/assets/im3.jpeg'
+import bento4 from '@/assets/im4.jpeg'
+import bento5 from '@/assets/im5.jpeg'
+import bento6 from '@/assets/im6.jpeg'
 
 const items = [
   {
@@ -8,42 +14,42 @@ const items = [
     body: 'Опора, дыхание, связки. Объясняем спокойно, без идеи «сломать и собрать» голос заново.',
     icon: Waves,
     className: 'md:col-span-2',
-    img: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
+    img: bento1,
   },
   {
     title: 'Сцена и микрофон',
     body: 'Подача, микрофон, уверенность. И для живого выступления, и когда вы поёте в запись.',
     icon: Mic2,
     className: 'md:col-span-1',
-    img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=900&q=80',
+    img: bento2,
   },
   {
     title: 'Слышим детали звука',
     body: 'Тембр, атака, мягкость. Разбираем запись так, чтобы было ясно, что менять по шагам.',
     icon: Headphones,
     className: 'md:col-span-1',
-    img: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=900&q=80',
+    img: bento3,
   },
   {
     title: 'Репертуар под вас',
     body: 'Поп, рок, соул, академия. Подбираем материал под ваш голос и цель, а не «по учебнику для всех».',
     icon: Radio,
     className: 'md:col-span-1',
-    img: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=900&q=80',
+    img: bento4,
   },
   {
     title: 'Конкурсы и отчёты',
     body: 'Готовим к выступлениям: программа, образ, сценическое поведение.',
     icon: Trophy,
     className: 'md:col-span-1',
-    img: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=900&q=80',
+    img: bento5,
   },
   {
     title: 'Занятия в студии',
     body: 'Приглушённый свет, тишина между фразами, нормальная акустика. Удобно сосредоточиться на голосе.',
     icon: Stars,
     className: 'md:col-span-2',
-    img: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=82',
+    img: bento6,
   },
 ]
 
@@ -80,6 +86,7 @@ export function AboutBento() {
                 className="absolute inset-0 h-full w-full object-cover opacity-40 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-55"
                 loading="lazy"
                 decoding="async"
+                fetchPriority="low"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-studio-bg via-studio-bg/70 to-transparent" />
               <div className="relative flex h-full min-h-[200px] flex-col justify-end p-6 sm:min-h-[220px] sm:p-7">

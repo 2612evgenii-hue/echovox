@@ -5,9 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useScrollToSection } from '@/hooks/useScrollToSection'
 import { supportsScrollTimeline } from '@/lib/supportsScrollTimeline'
 import sergeyPhoto from '@/assets/sergey.webp'
-
-const HERO_IMG =
-  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=2000&q=80'
+import heroBackground from '@/assets/baground.jpeg'
 
 const HERO_PARALLAX_MAX_PX = 120
 const HERO_PARALLAX_SCROLL_RANGE = 520
@@ -97,10 +95,10 @@ export function HeroSection() {
       <div className="pointer-events-none absolute inset-0 -z-20 overflow-hidden">
         <div
           ref={heroPhotoRef}
-          className={`absolute left-0 top-[-20%] h-[140%] w-full origin-center bg-cover bg-center opacity-[0.35] ${
+          className={`absolute left-0 top-[-20%] h-[140%] w-full origin-center transform-gpu bg-cover bg-center opacity-[0.35] ${
             parallaxCss ? 'echovox-hero-photo-parallax' : ''
           }`}
-          style={{ backgroundImage: `url(${HERO_IMG})` }}
+          style={{ backgroundImage: `url(${heroBackground})` }}
         />
       </div>
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-studio-bg/20 via-studio-bg/85 to-studio-bg" />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { startTransition, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Reveal } from '@/components/animations/Reveal'
 import { apiJson } from '@/lib/api'
@@ -24,20 +24,38 @@ export function NewsSection() {
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const data = await apiJson<{ news: NewsItem[] }>('/news.php')
-        if (cancelled) return
-        setItems(data.news)
-        setNewsNavVisible(data.news.length > 0)
-      } catch {
-        if (cancelled) return
-        setItems([])
-        setNewsNavVisible(false)
-      }
-    })()
+
+    const run = () => {
+      ;(async () => {
+        try {
+          const data = await apiJson<{ news: NewsItem[] }>('/news.php')
+          if (cancelled) return
+          startTransition(() => {
+            setItems(data.news)
+            setNewsNavVisible(data.news.length > 0)
+          })
+        } catch {
+          if (cancelled) return
+          startTransition(() => {
+            setItems([])
+            setNewsNavVisible(false)
+          })
+        }
+      })()
+    }
+
+    let idleId: number | undefined
+    let timerId: ReturnType<typeof setTimeout> | undefined
+    if (typeof requestIdleCallback !== 'undefined') {
+      idleId = requestIdleCallback(run, { timeout: 1800 })
+    } else {
+      timerId = window.setTimeout(run, 0)
+    }
+
     return () => {
       cancelled = true
+      if (idleId !== undefined) cancelIdleCallback(idleId)
+      if (timerId !== undefined) clearTimeout(timerId)
       setNewsNavVisible(false)
     }
   }, [setNewsNavVisible])

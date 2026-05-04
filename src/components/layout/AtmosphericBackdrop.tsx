@@ -169,7 +169,7 @@ export function AtmosphericBackdrop() {
         <>
           <div
             ref={sweepRef}
-            className={`pointer-events-none absolute inset-x-[-35%] top-[-20%] z-[2] h-[85vh] origin-center ${
+            className={`pointer-events-none absolute inset-x-[-35%] top-[-20%] z-[2] h-[85vh] origin-center transform-gpu ${
               cssScroll ? 'echovox-sweep-scroll' : ''
             }`}
           >
@@ -183,7 +183,7 @@ export function AtmosphericBackdrop() {
           </div>
           <div
             ref={washRef}
-            className={`pointer-events-none absolute inset-x-[-20%] bottom-[-30%] z-[2] h-[55vh] origin-center opacity-[0.48] mix-blend-screen ${
+            className={`pointer-events-none absolute inset-x-[-20%] bottom-[-30%] z-[2] h-[55vh] origin-center transform-gpu opacity-[0.48] mix-blend-screen ${
               cssScroll ? 'echovox-wash-scroll' : ''
             }`}
           >
