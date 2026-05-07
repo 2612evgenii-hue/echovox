@@ -123,7 +123,7 @@ export function SiteHeader({ showNewsNav = false }: SiteHeaderProps) {
               type="button"
               aria-label="Закрыть меню"
               className={cn(
-                'fixed inset-0 top-16 z-[140] md:hidden transition-colors duration-300',
+                'fixed inset-0 top-16 z-[140] lg:hidden transition-colors duration-300',
                 scrolled
                   ? 'bg-black/88 backdrop-blur-md'
                   : 'bg-studio-bg/40 backdrop-blur-2xl saturate-150',
@@ -143,7 +143,7 @@ export function SiteHeader({ showNewsNav = false }: SiteHeaderProps) {
               aria-modal="true"
               aria-label="Навигация по сайту"
               className={cn(
-                'fixed inset-y-0 right-0 top-16 z-[150] flex w-[min(100vw,22rem)] flex-col md:hidden transition-[background-color,backdrop-filter,box-shadow,border-color] duration-300',
+                'fixed inset-y-0 right-0 top-16 z-[150] flex w-[min(100vw,22rem)] flex-col lg:hidden transition-[background-color,backdrop-filter,box-shadow,border-color] duration-300',
                 scrolled
                   ? 'border-l border-white/10 bg-zinc-950 shadow-[-24px_0_80px_-20px_rgba(0,0,0,0.9)]'
                   : 'border-l border-white/15 bg-zinc-950/35 backdrop-blur-2xl shadow-[inset_1px_0_0_rgba(255,255,255,0.08)] shadow-[0_0_48px_-12px_rgba(0,0,0,0.55)]',
@@ -289,7 +289,7 @@ export function SiteHeader({ showNewsNav = false }: SiteHeaderProps) {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           {navItems.map((item) => (
             <button
               key={item.href}
@@ -302,7 +302,7 @@ export function SiteHeader({ showNewsNav = false }: SiteHeaderProps) {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           <a
             href={PHONE_TEL}
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-zinc-200 transition-colors hover:border-accent-violet/40 hover:text-white"
@@ -317,7 +317,7 @@ export function SiteHeader({ showNewsNav = false }: SiteHeaderProps) {
 
         <motion.button
           type="button"
-          className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/[0.05] text-white shadow-inner shadow-black/30 md:hidden"
+          className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/[0.05] text-white shadow-inner shadow-black/30 lg:hidden"
           aria-expanded={open}
           aria-controls="mobile-menu-panel"
           onClick={() => setOpen((v) => !v)}

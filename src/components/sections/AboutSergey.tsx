@@ -11,7 +11,7 @@ import { Reveal } from '@/components/animations/Reveal'
 import { Button } from '@/components/ui/button'
 import { useScrollToSection } from '@/hooks/useScrollToSection'
 import { cn } from '@/lib/utils'
-import sergeyPhoto from '@/assets/sergey.webp'
+import sergeyPhoto from '@/assets/sergey.jpg'
 
 const PHONE_TEL = 'tel:+79042313359'
 
@@ -33,7 +33,7 @@ export function AboutSergey() {
         <Reveal>
           <div className="overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/50 transition-colors hover:border-white/[0.14]">
             <div className="grid gap-0 md:grid-cols-[minmax(0,13.5rem)_1fr] md:items-stretch">
-              <div className="relative aspect-[16/10] w-full max-h-52 border-b border-white/10 sm:aspect-[5/3] sm:max-h-60 md:max-h-none md:aspect-auto md:min-h-[12rem] md:border-b-0 md:border-r">
+              <div className="relative aspect-[3/4] w-full min-h-[17.5rem] max-h-[min(92vh,40rem)] border-b border-white/10 sm:min-h-[19rem] sm:max-h-[min(88vh,42rem)] md:aspect-auto md:min-h-[12rem] md:max-h-none md:border-b-0 md:border-r">
                 <img
                   src={sergeyPhoto}
                   alt="Сергей"

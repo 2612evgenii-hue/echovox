@@ -1,6 +1,11 @@
+import { useEffect, useState } from 'react'
 import { Mic2, Radio, Stars, Trophy, Waves, Headphones } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Reveal } from '@/components/animations/Reveal'
 import { cn } from '@/lib/utils'
+import { apiJson } from '@/lib/api'
+import { enrichBentoCards } from '@/lib/bentoDefaults'
+import type { BentoCard } from '@/types/bento'
 import bento1 from '@/assets/im1.jpeg'
 import bento2 from '@/assets/im2.jpeg'
 import bento3 from '@/assets/im3.jpeg'
@@ -8,7 +13,15 @@ import bento4 from '@/assets/im4.jpeg'
 import bento5 from '@/assets/im5.jpeg'
 import bento6 from '@/assets/im6.jpeg'
 
-const items = [
+type FallbackItem = {
+  title: string
+  body: string
+  icon: LucideIcon
+  className: string
+  img: string
+}
+
+const FALLBACK_ITEMS: FallbackItem[] = [
   {
     title: 'Техника без форсирования',
     body: 'Покажу, как держать дыхание и не зажимать горло. Без «ломки». Ищем рабочие ощущения и закрепляем их.',
@@ -53,7 +66,33 @@ const items = [
   },
 ]
 
+function layoutClass(layout: string): string {
+  return layout === 'wide' ? 'md:col-span-2' : 'md:col-span-1'
+}
+
 export function AboutBento() {
+  const [apiCards, setApiCards] = useState<BentoCard[] | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const data = await apiJson<{ cards: BentoCard[] }>('/bento.php')
+        if (!alive) return
+        const raw = Array.isArray(data.cards) ? data.cards : []
+        setApiCards(enrichBentoCards(raw))
+      } catch {
+        if (alive) setApiCards([])
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const useFallback = apiCards !== null && apiCards.length === 0
+  const showApi = apiCards !== null && apiCards.length > 0
+
   return (
     <section id="about" className="scroll-mt-24 py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -71,37 +110,79 @@ export function AboutBento() {
         </Reveal>
 
         <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
-          {items.map((item, i) => (
-            <Reveal
-              key={item.title}
-              delay={i * 0.05}
-              className={cn(
-                'group relative overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/50',
-                item.className,
-              )}
-            >
-              <img
-                src={item.img}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover opacity-40 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-55"
-                loading="lazy"
-                decoding="async"
-                fetchPriority="low"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-studio-bg via-studio-bg/70 to-transparent" />
-              <div className="relative flex h-full min-h-[200px] flex-col justify-end p-6 sm:min-h-[220px] sm:p-7">
-                <div className="mb-3 inline-flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-accent-gold backdrop-blur">
-                  <item.icon className="size-5" aria-hidden />
-                </div>
-                <h3 className="font-display text-xl font-black text-white">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-                  {item.body}
-                </p>
-              </div>
-            </Reveal>
-          ))}
+          {showApi
+            ? apiCards!.map((item, i) => (
+                <Reveal
+                  key={item.id}
+                  delay={i * 0.05}
+                  className={cn(
+                    'group relative overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/50',
+                    layoutClass(String(item.layout)),
+                  )}
+                >
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover opacity-40 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-55"
+                      loading="lazy"
+                      decoding="async"
+                      fetchPriority="low"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 bg-gradient-to-t from-studio-bg via-studio-bg/70 to-transparent" />
+                  <div className="relative flex h-full min-h-[200px] flex-col justify-end p-6 sm:min-h-[220px] sm:p-7">
+                    <div className="mb-3 inline-flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-accent-gold backdrop-blur [&_svg]:size-5">
+                      {/* SVG проходит очистку на сервере */}
+                      <span
+                        className="flex size-5 items-center justify-center [&_svg]:size-5"
+                        dangerouslySetInnerHTML={{ __html: item.icon_svg }}
+                      />
+                    </div>
+                    <h3 className="font-display text-xl font-black text-white">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+                      {item.body}
+                    </p>
+                  </div>
+                </Reveal>
+              ))
+            : null}
+
+          {useFallback || apiCards === null
+            ? FALLBACK_ITEMS.map((item, i) => (
+                <Reveal
+                  key={item.title}
+                  delay={i * 0.05}
+                  className={cn(
+                    'group relative overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/50',
+                    item.className,
+                  )}
+                >
+                  <img
+                    src={item.img}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover opacity-40 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-55"
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-studio-bg via-studio-bg/70 to-transparent" />
+                  <div className="relative flex h-full min-h-[200px] flex-col justify-end p-6 sm:min-h-[220px] sm:p-7">
+                    <div className="mb-3 inline-flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-accent-gold backdrop-blur">
+                      <item.icon className="size-5" aria-hidden />
+                    </div>
+                    <h3 className="font-display text-xl font-black text-white">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+                      {item.body}
+                    </p>
+                  </div>
+                </Reveal>
+              ))
+            : null}
         </div>
       </div>
     </section>

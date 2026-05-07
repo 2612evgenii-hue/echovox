@@ -27,11 +27,49 @@ type ContactRow = {
   created_at: string
 }
 
+type BentoRow = {
+  id: number
+  sort_order: number
+  title: string
+  body: string
+  icon_svg: string
+  image: string | null
+  layout: string
+}
+
 /** Как в `api/contact.php` и `src/lib/phone.ts` */
 const RU_PHONE_REGEX =
   /^(\+7|7|8)?[\s-]?\(?[489][0-9]{2}\)?[\s-]?[0-9]{3}[\s-]?[0-9]{2}[\s-]?[0-9]{2}$/
 
 const DEV_NEWS_IMAGE_RE = /^\/uploads\/dev-news\/[a-f0-9]{20}\.(webp|jpg)$/i
+const DEV_BENTO_IMAGE_RE = /^\/uploads\/dev-bento\/[a-f0-9]{20}\.(webp|jpg)$/i
+/** Как в продакшене: статические фоны из `public/bento-default/` */
+const DEV_BENTO_DEFAULT_IMAGE_RE = /^\/bento-default\/im[1-6]\.jpeg$/i
+
+type BentoDefaultsFile = {
+  placeholderIconSvg: string
+  seedCards: Array<{
+    title: string
+    body: string
+    layout: string
+    iconSvg: string
+    image: string
+  }>
+}
+
+let bentoDefaultsCache: BentoDefaultsFile | null = null
+
+function loadBentoDefaults(): BentoDefaultsFile {
+  if (bentoDefaultsCache) return bentoDefaultsCache
+  const p = path.join(process.cwd(), 'data/bento-defaults.json')
+  const raw = fs.readFileSync(p, 'utf8')
+  bentoDefaultsCache = JSON.parse(raw) as BentoDefaultsFile
+  return bentoDefaultsCache
+}
+
+function isAllowedBentoDevImagePath(s: string): boolean {
+  return DEV_BENTO_IMAGE_RE.test(s) || DEV_BENTO_DEFAULT_IMAGE_RE.test(s)
+}
 
 function parseNewsImageUpload(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -81,6 +119,32 @@ function deleteDevNewsUpload(webPath: string) {
   }
 }
 
+function deleteDevBentoUpload(webPath: string) {
+  if (!DEV_BENTO_IMAGE_RE.test(webPath)) return
+  const dir = path.join(process.cwd(), 'public', 'uploads', 'dev-bento')
+  const full = path.join(dir, path.basename(webPath))
+  if (!full.startsWith(dir)) return
+  try {
+    if (fs.existsSync(full)) fs.unlinkSync(full)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Совпадает с сидом в `api/bootstrap.php` (`data/bento-defaults.json`). */
+function defaultBentoRows(): BentoRow[] {
+  const { seedCards } = loadBentoDefaults()
+  return seedCards.map((c, i) => ({
+    id: i + 1,
+    sort_order: i,
+    title: c.title,
+    body: c.body,
+    icon_svg: c.iconSvg,
+    image: c.image,
+    layout: c.layout,
+  }))
+}
+
 function parseCookies(header?: string): Record<string, string> {
   const out: Record<string, string> = {}
   if (!header) return out
@@ -126,6 +190,8 @@ export function echovoxMockApiPlugin(): Plugin {
   let news: NewsRow[] = []
   let contactsPath = ''
   let contacts: ContactRow[] = []
+  let bentoPath = ''
+  let bento: BentoRow[] = []
 
   function loadNews() {
     try {
@@ -157,6 +223,47 @@ export function echovoxMockApiPlugin(): Plugin {
     fs.writeFileSync(contactsPath, JSON.stringify(contacts, null, 2), 'utf8')
   }
 
+  function loadBento() {
+    try {
+      const raw = fs.readFileSync(bentoPath, 'utf8')
+      const parsed = JSON.parse(raw) as unknown
+      bento = Array.isArray(parsed) ? (parsed as BentoRow[]) : []
+    } catch {
+      bento = []
+    }
+  }
+
+  /** Как `echovox_migrate_bento_placeholder_icons` в PHP: поднимает старый dev-bento.json с кругами. */
+  function migrateDevBentoFromDefaults(): void {
+    const defs = loadBentoDefaults()
+    const placeholder = defs.placeholderIconSvg
+    const seeds = defs.seedCards
+    if (seeds.length === 0) return
+
+    let changed = false
+    const next = bento.map((row) => {
+      const seed = seeds[row.sort_order]
+      if (!seed) return row
+      if (row.icon_svg.trim() !== placeholder) return row
+      if (row.image != null && String(row.image).trim() !== '') return row
+      changed = true
+      return {
+        ...row,
+        icon_svg: seed.iconSvg,
+        image: seed.image,
+      }
+    })
+    if (changed) {
+      bento = next
+      saveBento()
+    }
+  }
+
+  function saveBento() {
+    fs.mkdirSync(path.dirname(bentoPath), { recursive: true })
+    fs.writeFileSync(bentoPath, JSON.stringify(bento, null, 2), 'utf8')
+  }
+
   return {
     name: 'echovox-mock-api',
     enforce: 'pre',
@@ -165,6 +272,17 @@ export function echovoxMockApiPlugin(): Plugin {
       loadNews()
       contactsPath = path.join(process.cwd(), 'data/dev-contacts.json')
       loadContacts()
+      bentoPath = path.join(process.cwd(), 'data/dev-bento.json')
+      if (!fs.existsSync(bentoPath)) {
+        fs.mkdirSync(path.dirname(bentoPath), { recursive: true })
+        fs.writeFileSync(
+          bentoPath,
+          JSON.stringify(defaultBentoRows(), null, 2),
+          'utf8',
+        )
+      }
+      loadBento()
+      migrateDevBentoFromDefaults()
 
       /** Регистрируем до внутренних middleware Vite, чтобы /api не ушёл в SPA fallback. */
       server.middlewares.use(async (req, res, next) => {
@@ -387,6 +505,195 @@ export function echovoxMockApiPlugin(): Plugin {
             loadContacts()
             contacts = contacts.filter((c) => c.id !== id)
             saveContacts()
+            sendJson(res, 200, { ok: true })
+            return
+          }
+
+          if (pathname === '/api/bento.php' && method === 'GET') {
+            loadBento()
+            const sorted = [...bento].sort((a, b) =>
+              a.sort_order !== b.sort_order
+                ? a.sort_order - b.sort_order
+                : a.id - b.id,
+            )
+            sendJson(res, 200, { cards: sorted })
+            return
+          }
+
+          if (pathname === '/api/bento-image.php' && method === 'POST') {
+            if (!isLoggedIn(req)) {
+              sendJson(res, 401, { error: 'Требуется вход' })
+              return
+            }
+            try {
+              const buf = await parseNewsImageUpload(req)
+              if (buf.length > 2_500_000) {
+                sendJson(res, 422, { error: 'Файл больше 2.5 МБ' })
+                return
+              }
+              const outDir = path.join(
+                process.cwd(),
+                'public',
+                'uploads',
+                'dev-bento',
+              )
+              fs.mkdirSync(outDir, { recursive: true })
+              const isJpeg = buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8
+              const ext = isJpeg ? '.jpg' : '.webp'
+              const name = crypto.randomBytes(10).toString('hex') + ext
+              fs.writeFileSync(path.join(outDir, name), buf)
+              sendJson(res, 200, {
+                ok: true,
+                path: `/uploads/dev-bento/${name}`,
+              })
+            } catch (e) {
+              const code = e instanceof Error ? e.message : ''
+              if (code === 'too_large') {
+                sendJson(res, 422, { error: 'Файл больше 2.5 МБ' })
+                return
+              }
+              sendJson(res, 422, { error: 'Файл не получен' })
+            }
+            return
+          }
+
+          if (pathname === '/api/bento.php' && method === 'POST') {
+            if (!isLoggedIn(req)) {
+              sendJson(res, 401, { error: 'Требуется вход' })
+              return
+            }
+            const raw = await readBody(req)
+            let j: Record<string, unknown> = {}
+            try {
+              j = JSON.parse(raw || '{}') as Record<string, unknown>
+            } catch {
+              j = {}
+            }
+            const idNum =
+              typeof j.id === 'number'
+                ? j.id
+                : parseInt(String(j.id ?? '0'), 10) || 0
+            const title =
+              typeof j.title === 'string' ? j.title.trim().slice(0, 300) : ''
+            const body =
+              typeof j.body === 'string' ? j.body.trim().slice(0, 20000) : ''
+            const icon_svg =
+              typeof j.icon_svg === 'string' ? j.icon_svg.trim() : ''
+            if (!icon_svg.includes('<svg')) {
+              sendJson(res, 422, {
+                error:
+                  'Вставьте корректную SVG-иконку (целиком тег <svg>…</svg>)',
+              })
+              return
+            }
+            const layout =
+              typeof j.layout === 'string' &&
+              j.layout.toLowerCase() === 'wide'
+                ? 'wide'
+                : 'normal'
+            let sort_order = 0
+            if (
+              typeof j.sort_order === 'number' &&
+              Number.isFinite(j.sort_order)
+            ) {
+              sort_order = Math.max(
+                0,
+                Math.min(9999, Math.floor(j.sort_order)),
+              )
+            }
+
+            if (!title || !body) {
+              sendJson(res, 422, {
+                error: 'Заполните заголовок и текст карточки',
+              })
+              return
+            }
+
+            loadBento()
+
+            if (idNum > 0) {
+              const idx = bento.findIndex((x) => x.id === idNum)
+              if (idx === -1) {
+                sendJson(res, 404, { error: 'Карточка не найдена' })
+                return
+              }
+              const prev = bento[idx]
+              let image: string | null = prev.image
+              if (Object.prototype.hasOwnProperty.call(j, 'image')) {
+                const rawImg = j.image
+                if (rawImg === null || rawImg === '') {
+                  if (prev.image) deleteDevBentoUpload(prev.image)
+                  image = null
+                } else if (typeof rawImg === 'string') {
+                  const s = rawImg.trim()
+                  if (!isAllowedBentoDevImagePath(s)) {
+                    sendJson(res, 422, { error: 'Некорректное изображение' })
+                    return
+                  }
+                  if (prev.image && prev.image !== s) {
+                    deleteDevBentoUpload(prev.image)
+                  }
+                  image = s
+                }
+              }
+              bento[idx] = {
+                ...prev,
+                sort_order,
+                title,
+                body,
+                icon_svg,
+                image,
+                layout,
+              }
+              saveBento()
+              sendJson(res, 200, { ok: true, id: idNum })
+              return
+            }
+
+            let image: string | null = null
+            if (
+              j.image !== undefined &&
+              j.image !== null &&
+              String(j.image).trim() !== ''
+            ) {
+              const s = String(j.image).trim()
+              if (!isAllowedBentoDevImagePath(s)) {
+                sendJson(res, 422, { error: 'Некорректное изображение' })
+                return
+              }
+              image = s
+            }
+            const newId =
+              bento.length === 0 ? 1 : Math.max(...bento.map((x) => x.id)) + 1
+            bento.push({
+              id: newId,
+              sort_order,
+              title,
+              body,
+              icon_svg,
+              image,
+              layout,
+            })
+            saveBento()
+            sendJson(res, 200, { ok: true, id: newId })
+            return
+          }
+
+          if (pathname === '/api/bento.php' && method === 'DELETE') {
+            if (!isLoggedIn(req)) {
+              sendJson(res, 401, { error: 'Требуется вход' })
+              return
+            }
+            const bid = Number(parsedUrl.searchParams.get('id') || '0')
+            if (!Number.isFinite(bid) || bid < 1) {
+              sendJson(res, 422, { error: 'Некорректный id' })
+              return
+            }
+            loadBento()
+            const row = bento.find((x) => x.id === bid)
+            if (row?.image) deleteDevBentoUpload(row.image)
+            bento = bento.filter((x) => x.id !== bid)
+            saveBento()
             sendJson(res, 200, { ok: true })
             return
           }

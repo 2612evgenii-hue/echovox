@@ -9,6 +9,9 @@ import {
 } from 'react'
 import * as THREE from 'three'
 import heroEnvUrl from '@/assets/baground.jpeg'
+import { useHeroMicLayoutBlendRef } from '@/hooks/useHeroMicLayoutBlendRef'
+import { useMinLg } from '@/hooks/useMinLg'
+import { cn } from '@/lib/utils'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js'
@@ -419,17 +422,50 @@ function applyMicPivotAlongLongAxis(
   return compensation
 }
 
-/** Крупный размер в кадре (desktop); при обрезании уменьши значение */
-const HERO_MIC_SCALE = 2.55
+const MIC_LAYOUT = {
+  side: {
+    /** Крупный размер в кадре (desktop lg+) */
+    scale: 2.55,
+    /**
+     * Фиксированный наклон к заголовку слева (против часовой в кадре).
+     * Крутится только дочерняя группа по Y — этот угол не «плывёт».
+     */
+    basePose: [0.06, -0.1, 0.52] as [number, number, number],
+    /** X меньше — левее (зона между текстом и краем); Y — высота в кадре */
+    modelOffset: [0.44, 0.06, 0] as [number, number, number],
+  },
+  'center-back': {
+    /** Крупнее в центре узкого экрана; рамка задаётся контейнером Canvas */
+    scale: 1.98,
+    /** Меньше крен против часовой (Z) и наклон по X, чем на широком — микрофон ровнее по центру */
+    basePose: [0.028, 0, 0.34] as [number, number, number],
+    /** Чуть выше — видна «ножка» целиком при узком кадре */
+    modelOffset: [0, 0.2, 0] as [number, number, number],
+  },
+} as const
 
-/**
- * Фиксированный наклон к заголовку слева (против часовой в кадре).
- * Крутится только дочерняя группа по Y — этот угол не «плывёт».
- */
-const BASE_POSE: [number, number, number] = [0.06, -0.1, 0.52]
+/** Камера дальше в центральном режиме — низ меша не обрезается; FOV чуть шире для запаса по вертикали */
+const CAM_Z_CENTER = 8.52
+const CAM_Z_SIDE = 7.05
+const CAM_FOV_CENTER = 31.6
+const CAM_FOV_SIDE = 29.5
 
-/** Позиция: X меньше — левее (заполняем зону между текстом и краем); Y — высота в кадре */
-const MODEL_OFFSET: [number, number, number] = [0.58, 0.06, 0]
+function HeroMicCameraRig({
+  blendRef,
+}: {
+  blendRef: MutableRefObject<number>
+}) {
+  const { camera } = useThree()
+  useFrame(() => {
+    const b = blendRef.current
+    const cam = camera as THREE.PerspectiveCamera
+    cam.position.z = THREE.MathUtils.lerp(CAM_Z_CENTER, CAM_Z_SIDE, b)
+    cam.position.y = THREE.MathUtils.lerp(0.27, 0.3, b)
+    cam.fov = THREE.MathUtils.lerp(CAM_FOV_CENTER, CAM_FOV_SIDE, b)
+    cam.updateProjectionMatrix()
+  })
+  return null
+}
 
 /** Нормализованные координаты курсора по области микрофона (-1…1); `active` — указатель над блоком */
 export type MicPointerControl = {
@@ -438,28 +474,47 @@ export type MicPointerControl = {
   ny: number
 }
 
-const IDLE_SPIN_Y = 0.52
+/** Пассивное вращение вокруг Y (рад/с); ниже — медленнее */
+const IDLE_SPIN_Y = 0.3
 /** Доп. поворот по Y/X при наведении (рад) */
 const HOVER_YAW_RANGE = 0.52
 const HOVER_PITCH_RANGE = 0.38
-/** Сглаживание к целевой ориентации (кватернионный slerp) */
-const ORIENT_SMOOTH = 9.5
+/** Сглаживание к целевой ориентации в обычном режиме (кватернионный slerp) */
+const ORIENT_SMOOTH = 8
+/**
+ * В первые миллисекунды после монтирования кватернион группы = identity;
+ * сразу высокий ORIENT_SMOOTH даёт резкий «щёлчок» к BASE_POSE. Ниже — старт
+ * сглаживания; за INTRO_ORIENT_MS выходим на ORIENT_SMOOTH.
+ */
+const ORIENT_INTRO_START = 2.1
+const INTRO_ORIENT_MS = 1250
+/** При prefers-reduced-motion — короче, но без мгновенного скачка */
+const INTRO_ORIENT_MS_REDUCE = 380
+const ORIENT_INTRO_START_REDUCE = 4.5
 
 /** Доля высоты bbox от нижней грани до точки вращения (0.5 = центр AABB; меньше — точка ниже, ближе к основанию) */
 const MIC_PIVOT_FRAC_FROM_BOTTOM = 0.44
+
+const POINTER_HOVER_BLEND_MIN = 0.93
 
 function MicMesh({
   animGroupRef,
   reducedMotion,
   variant,
   pointerCtrlRef,
+  layoutBlendRef,
+  onVisualReady,
 }: {
   animGroupRef: RefObject<THREE.Group | null>
   reducedMotion: boolean
   variant: MicrophoneVariant
   pointerCtrlRef: MutableRefObject<MicPointerControl>
+  layoutBlendRef: MutableRefObject<number>
+  onVisualReady?: () => void
 }) {
   const { camera } = useThree()
+  const onReadyRef = useRef(onVisualReady)
+  onReadyRef.current = onVisualReady
   const [root, setRoot] = useState<THREE.Group | null>(null)
   const [pivotVisualComp, setPivotVisualComp] = useState<
     [number, number, number]
@@ -467,12 +522,21 @@ function MicMesh({
   const spinAccumRef = useRef(0)
   const hoverYawFreezeRef = useRef(0)
   const prevPointerActiveRef = useRef(false)
+  const orientIntroT0Ref = useRef<number | null>(null)
 
   const baseQuatRef = useRef(
     new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(BASE_POSE[0], BASE_POSE[1], BASE_POSE[2], 'XYZ'),
+      new THREE.Euler(
+        MIC_LAYOUT.side.basePose[0],
+        MIC_LAYOUT.side.basePose[1],
+        MIC_LAYOUT.side.basePose[2],
+        'XYZ',
+      ),
     ),
   )
+
+  const blendedEuler = useRef(new THREE.Euler())
+  const outerGroupRef = useRef<THREE.Group>(null)
   const tmpQ = useRef(new THREE.Quaternion())
   const tmpRelEuler = useRef(new THREE.Euler())
   const qYaw = useRef(new THREE.Quaternion())
@@ -490,6 +554,11 @@ function MicMesh({
         const comp = applyMicPivotAlongLongAxis(cloned, MIC_PIVOT_FRAC_FROM_BOTTOM)
         setPivotVisualComp([comp.x, comp.y, comp.z])
         setRoot(cloned)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            onReadyRef.current?.()
+          })
+        })
       })
       .catch(() => {
         if (active) {
@@ -509,12 +578,49 @@ function MicMesh({
 
   useFrame((_, delta) => {
     const g = animGroupRef.current
-    if (!g) return
+    const outer = outerGroupRef.current
+    if (!g || !outer) return
+
+    const b = layoutBlendRef.current
+    const L0 = MIC_LAYOUT['center-back']
+    const L1 = MIC_LAYOUT.side
+    if (b < POINTER_HOVER_BLEND_MIN) {
+      pointerCtrlRef.current.active = false
+    }
+
+    const e = blendedEuler.current
+    e.set(
+      THREE.MathUtils.lerp(L0.basePose[0], L1.basePose[0], b),
+      THREE.MathUtils.lerp(L0.basePose[1], L1.basePose[1], b),
+      THREE.MathUtils.lerp(L0.basePose[2], L1.basePose[2], b),
+      'XYZ',
+    )
+    baseQuatRef.current.setFromEuler(e)
+
+    const scale = THREE.MathUtils.lerp(L0.scale, L1.scale, b)
+    outer.scale.setScalar(scale)
+    outer.position.set(
+      THREE.MathUtils.lerp(L0.modelOffset[0], L1.modelOffset[0], b) +
+        pivotVisualComp[0],
+      THREE.MathUtils.lerp(L0.modelOffset[1], L1.modelOffset[1], b) +
+        pivotVisualComp[1],
+      THREE.MathUtils.lerp(L0.modelOffset[2], L1.modelOffset[2], b) +
+        pivotVisualComp[2],
+    )
+
     const reduce = reducedMotion ? 0.12 : 1
     const dt = Math.min(delta, 1 / 45)
     const p = pointerCtrlRef.current
     const hoverMul = reduce
-    const alpha = 1 - Math.exp(-ORIENT_SMOOTH * dt)
+
+    if (orientIntroT0Ref.current === null) orientIntroT0Ref.current = performance.now()
+    const introMs = reducedMotion ? INTRO_ORIENT_MS_REDUCE : INTRO_ORIENT_MS
+    const introStart = reducedMotion ? ORIENT_INTRO_START_REDUCE : ORIENT_INTRO_START
+    const introElapsed = performance.now() - orientIntroT0Ref.current
+    const introT = introMs <= 0 ? 1 : Math.min(1, introElapsed / introMs)
+    const introEase = 1 - (1 - introT) ** 3
+    const orientSmooth = THREE.MathUtils.lerp(introStart, ORIENT_SMOOTH, introEase)
+    const alpha = 1 - Math.exp(-orientSmooth * dt)
 
     camRight.current.setFromMatrixColumn(camera.matrixWorld, 0).normalize()
 
@@ -546,14 +652,7 @@ function MicMesh({
   })
 
   return (
-    <group
-      scale={HERO_MIC_SCALE}
-      position={[
-        MODEL_OFFSET[0] + pivotVisualComp[0],
-        MODEL_OFFSET[1] + pivotVisualComp[1],
-        MODEL_OFFSET[2] + pivotVisualComp[2],
-      ]}
-    >
+    <group ref={outerGroupRef}>
       <group ref={animGroupRef}>
         {root ? <primitive object={root} dispose={null} /> : null}
       </group>
@@ -612,7 +711,13 @@ function createDimmedHeroEnvTexture(source: THREE.Texture): THREE.CanvasTexture 
 }
 
 /** Отражения на микрофоне = hero-фон (JPEG), чуть приглушённый. */
-function HeroReflectionEnvironment({ url }: { url: string }) {
+function HeroReflectionEnvironment({
+  url,
+  onReady,
+}: {
+  url: string
+  onReady?: () => void
+}) {
   const gl = useThree((s) => s.gl)
   const scene = useThree((s) => s.scene)
   const invalidate = useThree((s) => s.invalidate)
@@ -662,10 +767,12 @@ function HeroReflectionEnvironment({ url }: { url: string }) {
           }
         })
         invalidate()
+        queueMicrotask(() => onReady?.())
       },
       undefined,
       () => {
         if (!cancelled) invalidate()
+        onReady?.()
       },
     )
 
@@ -680,7 +787,7 @@ function HeroReflectionEnvironment({ url }: { url: string }) {
       }
       invalidate()
     }
-  }, [gl, invalidate, scene, url])
+  }, [gl, invalidate, scene, url, onReady])
 
   return null
 }
@@ -689,16 +796,40 @@ function Scene({
   reducedMotion,
   variant,
   pointerCtrlRef,
+  layoutBlendRef,
+  onMicMeshPainted,
+  onSplashSceneReady,
 }: {
   reducedMotion: boolean
   variant: MicrophoneVariant
   pointerCtrlRef: MutableRefObject<MicPointerControl>
+  layoutBlendRef: MutableRefObject<number>
+  onMicMeshPainted?: () => void
+  onSplashSceneReady?: () => void
 }) {
   const animRef = useRef<THREE.Group>(null)
+  const micDone = useRef(false)
+  const envDone = useRef(false)
+  const splashFired = useRef(false)
+  const splashCbRef = useRef(onSplashSceneReady)
+  splashCbRef.current = onSplashSceneReady
+
+  const trySplashReady = () => {
+    const cb = splashCbRef.current
+    if (!cb || splashFired.current) return
+    if (!micDone.current || !envDone.current) return
+    splashFired.current = true
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.setTimeout(() => cb(), 120)
+      })
+    })
+  }
 
   return (
     <>
       <KickFrames />
+      <HeroMicCameraRig blendRef={layoutBlendRef} />
       <ambientLight intensity={0.55} />
       <hemisphereLight
         color="#f2eefc"
@@ -712,7 +843,13 @@ function Scene({
       <pointLight position={[6, 7, 5]} intensity={1.15} color="#ffffff" />
       <pointLight position={[-5, 4, -6]} intensity={0.6} color="#b8acf5" />
       <Suspense fallback={null}>
-        <HeroReflectionEnvironment url={heroEnvUrl} />
+        <HeroReflectionEnvironment
+          url={heroEnvUrl}
+          onReady={() => {
+            envDone.current = true
+            trySplashReady()
+          }}
+        />
       </Suspense>
       <Suspense fallback={null}>
         <MicMesh
@@ -720,6 +857,12 @@ function Scene({
           reducedMotion={reducedMotion}
           variant={variant}
           pointerCtrlRef={pointerCtrlRef}
+          layoutBlendRef={layoutBlendRef}
+          onVisualReady={() => {
+            micDone.current = true
+            onMicMeshPainted?.()
+            trySplashReady()
+          }}
         />
       </Suspense>
     </>
@@ -730,17 +873,27 @@ export type MicrophoneModelProps = {
   reducedMotion?: boolean
   /** `model1` — FBX из model_1; `shure` — прежний OBJ Shure 55 */
   variant?: MicrophoneVariant
+  /** Меш + env отражений готовы — сплэш на desktop может закрыться без «засветов» */
+  onSplashSceneReady?: () => void
 }
 
 export function MicrophoneModel({
   reducedMotion = false,
   variant = 'model1',
+  onSplashSceneReady,
 }: MicrophoneModelProps) {
+  const layoutBlendRef = useHeroMicLayoutBlendRef()
+  const layoutWide = useMinLg()
   const pointerCtrlRef = useRef<MicPointerControl>({
     active: false,
     nx: 0,
     ny: 0,
   })
+  const [micPainted, setMicPainted] = useState(false)
+
+  useEffect(() => {
+    if (!layoutWide) pointerCtrlRef.current.active = false
+  }, [layoutWide])
 
   const syncPointer = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = e.currentTarget
@@ -754,22 +907,52 @@ export function MicrophoneModel({
 
   return (
     <div
-      className="pointer-events-auto absolute inset-y-0 left-auto right-0 z-0 h-full min-h-0 w-[min(66vw,56rem)] max-w-none translate-x-3 translate-y-10 transform-gpu overflow-visible max-lg:right-0 max-lg:w-[min(60vw,48rem)] max-lg:translate-x-1 max-lg:translate-y-8 lg:right-0 lg:w-[min(64vw,54rem)] lg:translate-x-4 lg:translate-y-14"
-      onPointerEnter={(e) => {
-        pointerCtrlRef.current.active = true
-        syncPointer(e)
-      }}
-      onPointerLeave={() => {
-        pointerCtrlRef.current.active = false
-      }}
-      onPointerMove={syncPointer}
+      className={cn(
+        'transform-gpu transition-[padding,transform,opacity] duration-700 ease-[cubic-bezier(0.45,0,0.15,1)] motion-reduce:transition-none',
+        !layoutWide
+          ? 'pointer-events-none absolute inset-0 z-0 flex min-h-0 items-center justify-center overflow-visible px-2 pb-[max(4.5rem,env(safe-area-inset-bottom))] pt-5 sm:px-4 sm:pb-28'
+          : // Ширина колонки влево (правый край у края окна); контент hero z-20 перекрывает при наложении
+            'pointer-events-auto absolute inset-y-0 right-0 left-auto z-10 h-full max-h-full min-h-0 w-[min(78vw,58rem)] min-[1536px]:w-[min(85vw,72rem)] min-[1920px]:w-[min(90vw,92rem)] min-[2560px]:w-[min(94vw,120rem)] max-w-full overflow-hidden translate-y-3 xl:translate-y-5',
+      )}
+      onPointerEnter={
+        layoutWide
+          ? (e) => {
+              pointerCtrlRef.current.active = true
+              syncPointer(e)
+            }
+          : undefined
+      }
+      onPointerLeave={
+        layoutWide ? () => { pointerCtrlRef.current.active = false } : undefined
+      }
+      onPointerMove={layoutWide ? syncPointer : undefined}
     >
-      <div className="relative h-full w-full min-h-0 overflow-visible">
+      <div
+        className={cn(
+          'relative min-h-0 overflow-visible',
+          !layoutWide
+            ? 'box-border w-full max-w-[42rem] min-h-[min(86vh,48rem)] h-[min(86vh,48rem)] sm:max-w-[46rem] sm:min-h-[min(88vh,50rem)] sm:h-[min(88vh,50rem)]'
+            : 'h-full w-full min-w-0',
+        )}
+      >
+        <div
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-0 z-[1] transition-opacity duration-[720ms] ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none',
+            micPainted ? 'opacity-0' : 'opacity-100',
+            layoutWide
+              ? 'bg-gradient-to-l from-studio-bg from-[28%] via-studio-bg/93 via-[50%] to-transparent'
+              : 'bg-[radial-gradient(ellipse_at_50%_58%,rgba(9,9,12,0.58)_0%,rgba(9,9,12,0.18)_48%,transparent_70%)]',
+          )}
+        />
         <Canvas
-          className="h-full w-full touch-none brightness-[1.04] saturate-[0.97] contrast-[1.02]"
+          className={cn(
+            'touch-none brightness-[1.04] saturate-[0.97] contrast-[1.02]',
+            !layoutWide && 'opacity-[0.94]',
+          )}
           frameloop="always"
           shadows={false}
-          dpr={[1, 1.25]}
+          dpr={!layoutWide ? [1, 1.15] : [1, 1.25]}
           onCreated={(state) => {
             state.invalidate()
             requestAnimationFrame(() => state.invalidate())
@@ -786,7 +969,7 @@ export function MicrophoneModel({
           }}
           camera={{
             position: [-0.02, 0.3, 7.05],
-            fov: 29.5,
+            fov: CAM_FOV_SIDE,
             near: 0.1,
             far: 100,
           }}
@@ -795,6 +978,9 @@ export function MicrophoneModel({
             reducedMotion={reducedMotion}
             variant={variant}
             pointerCtrlRef={pointerCtrlRef}
+            layoutBlendRef={layoutBlendRef}
+            onMicMeshPainted={() => setMicPainted(true)}
+            onSplashSceneReady={onSplashSceneReady}
           />
         </Canvas>
       </div>

@@ -36,14 +36,29 @@ export async function apiJson<T>(
     )
   }
 
-  const text = await res.text()
+  const raw = await res.text()
+  const text = raw.replace(/^\uFEFF/, '').trim()
   let data: unknown
   try {
     data = text ? JSON.parse(text) : null
   } catch {
+    const looksHtml = /^<!DOCTYPE|^<\s*html[\s>]/i.test(text)
+    const hint = looksHtml
+      ? 'Часто SPA перехватывает запрос: загрузите свежий `.htaccess` из сборки (`dist/`) и папку `api/` рядом с `index.html`. На Apache правило должно исключать `/api/` из fallback на index.html.'
+      : text.startsWith('<') || text.includes('<br')
+        ? 'В ответе не JSON (похоже на вывод PHP). Включите логи на хостинге или откройте вкладку Сеть в браузере и посмотрите тело ответа login.php.'
+        : ''
     throw new Error(
       res.ok
-        ? 'Некорректный ответ сервера'
+        ? [
+            'Некорректный ответ сервера (не JSON).',
+            hint,
+            text.length > 0 && text.length < 400
+              ? ` Фрагмент: ${text.slice(0, 200)}`
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' ')
         : extractErrorMessage(null, res.status),
     )
   }

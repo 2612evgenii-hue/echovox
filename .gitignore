@@ -28,9 +28,12 @@ dist-ssr
 # SQLite (local / production data)
 data/*.sqlite
 
-# Vite dev mock news / обращения (optional)
-data/dev-news.json
-data/dev-contacts.json
+# Vite dev mock bento cards
+data/dev-bento.json
+
+# Uploaded bento images (dev)
+public/uploads/dev-bento/*
+!public/uploads/dev-bento/.gitkeep
 
 # Uploaded news images (dev + production)
 public/uploads/dev-news/*

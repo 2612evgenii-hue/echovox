@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useBootRevealSuppressIntro } from '@/context/SplashGateContext'
 import { AtmosphericBackdrop } from '@/components/layout/AtmosphericBackdrop'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
@@ -11,6 +12,7 @@ export type MainLayoutOutletContext = {
 
 export function MainLayout() {
   const location = useLocation()
+  const suppressIntro = useBootRevealSuppressIntro()
   const [newsNavVisibleState, setNewsNavVisibleState] = useState(false)
 
   const setNewsNavVisible = useCallback((visible: boolean) => {
@@ -28,12 +30,12 @@ export function MainLayout() {
   return (
     <div className="relative min-h-screen">
       <AtmosphericBackdrop />
-      <div className="relative z-10 flex min-h-screen flex-col">
+      <div className="relative z-10 flex min-h-screen min-w-0 flex-col overflow-x-hidden">
         <SiteHeader showNewsNav={newsNavVisible} />
         <AnimatePresence mode="wait">
           <motion.main
             key={location.pathname}
-            initial={{ opacity: 0, y: 12 }}
+            initial={suppressIntro ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}

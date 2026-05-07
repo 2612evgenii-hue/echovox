@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "gen:bento-defaults": "node scripts/gen-bento-defaults.mjs",
     "dev": "vite --host 127.0.0.1 --port 5173",
     "dev:api": "php -S 127.0.0.1:8080 -t .",
     "build": "tsc -b && vite build",

@@ -27,6 +27,7 @@ import { optimizeNewsImage } from '@/lib/optimizeNewsImage'
 import { uploadNewsImage } from '@/lib/uploadNewsImage'
 import type { ContactItem } from '@/types/contact'
 import type { NewsItem } from '@/types/news'
+import { BentoCardsAdmin } from '@/components/admin/BentoCardsAdmin'
 
 function formatDate(iso: string) {
   try {
@@ -266,7 +267,7 @@ export function AdminPage() {
               Админка Echovox
             </h1>
             <p className="mt-1 text-sm text-zinc-400">
-              Новости на главной и обращения из формы «Запись».
+              Новости, карточки блока «Что делаем на занятиях» и обращения с формы.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -437,6 +438,8 @@ export function AdminPage() {
             </CardContent>
           </Card>
         </div>
+
+        <BentoCardsAdmin />
 
         <Card className="mt-8">
           <CardHeader>

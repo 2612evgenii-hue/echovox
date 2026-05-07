@@ -10,5 +10,8 @@ DirectoryIndex index.html index.php index.htm
 
 Options -MultiViews
 RewriteEngine On
+# Иначе SPA отдаёт index.html на /api/*.php — в браузере «не JSON», вход в админку ломается
+RewriteCond %{REQUEST_URI} !^/api/
 RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.html [QSA,L]

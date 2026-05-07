@@ -2,12 +2,13 @@ import { useEffect, useId, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import logo from '@/assets/logo.jpg'
 
-const DISPLAY_MS = 2100
-const CURTAIN_DURATION_S = 1.08
+/** Минимум показа плавного сплэша. По таймеру — `onTimerElapsed` (слой «Загрузка»), затем exit шторы. */
+const DISPLAY_MS = 4400
+const CURTAIN_DURATION_S = 1.35
 
 const RING_COUNT = 6
-/** Длительность одного цикла кольца (синхрон с CSS). */
-const RING_CYCLE_S = 3.6
+/** Длительность одного цикла кольца (синхрон с `index.css` `.echovox-splash-sub-ring`). */
+const RING_CYCLE_S = 5.5
 
 function SubwooferRings({
   reduce,
@@ -93,19 +94,35 @@ function SubwooferRings({
   )
 }
 
-export function SplashPreloader() {
+type SplashPreloaderProps = {
+  onDismissComplete?: () => void
+  /** Вызывается в тот же тик, когда истёк таймер, до начала exit-анимации сплэша — сюда монтируют слой «Загрузка» под сплэшем. */
+  onTimerElapsed?: () => void
+}
+
+export function SplashPreloader({
+  onDismissComplete,
+  onTimerElapsed,
+}: SplashPreloaderProps) {
   const reduce = useReducedMotion()
   const [visible, setVisible] = useState(true)
+  const [timerDone, setTimerDone] = useState(false)
   const ringGradId = `splash-ring-${useId().replace(/:/g, '')}`
 
   useEffect(() => {
     if (reduce) {
-      const t = window.setTimeout(() => setVisible(false), 400)
+      const t = window.setTimeout(() => setTimerDone(true), 520)
       return () => window.clearTimeout(t)
     }
-    const t = window.setTimeout(() => setVisible(false), DISPLAY_MS)
+    const t = window.setTimeout(() => setTimerDone(true), DISPLAY_MS)
     return () => window.clearTimeout(t)
   }, [reduce])
+
+  useEffect(() => {
+    if (!timerDone) return
+    onTimerElapsed?.()
+    setVisible(false)
+  }, [timerDone, onTimerElapsed])
 
   useEffect(() => {
     if (!visible) return
@@ -126,11 +143,16 @@ export function SplashPreloader() {
   const easeSoft = [0.45, 0, 0.2, 1] as const
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence
+      mode="wait"
+      onExitComplete={() => {
+        onDismissComplete?.()
+      }}
+    >
       {visible ? (
         <motion.div
           key="splash"
-          className="pointer-events-auto fixed inset-0 z-[200] flex flex-col overflow-hidden bg-[#030304]"
+          className="pointer-events-auto fixed inset-0 z-[560] flex flex-col overflow-hidden bg-[#030304] transform-gpu contain-[layout_paint]"
           initial={false}
           exit={
             reduce
