@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ChevronRight, Headphones, MapPin, Mic2, Sparkles } from 'lucide-react'
+import { ChevronRight, Headphones, MapPin, Mic2, Sparkles, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useScrollToSection } from '@/hooks/useScrollToSection'
 import { supportsScrollTimeline } from '@/lib/supportsScrollTimeline'
@@ -90,7 +90,7 @@ export function HeroSection() {
     <section
       ref={wrap}
       onPointerMove={onMove}
-      className="relative isolate min-h-[100svh] overflow-hidden pt-20 md:pt-24"
+      className="relative isolate min-h-[100svh] overflow-hidden pt-16 md:pt-24"
     >
       <div className="pointer-events-none absolute inset-0 -z-20 overflow-hidden">
         <div
@@ -113,7 +113,7 @@ export function HeroSection() {
       />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-grid-white bg-[length:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
 
-      <div className="mx-auto max-w-6xl px-4 pb-14 pt-6 sm:px-6 sm:pb-16 sm:pt-8 md:pb-24 md:pt-16">
+      <div className="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 sm:pb-16 sm:pt-8 md:pb-24 md:pt-16">
         <div className="relative md:pr-[min(23.5rem,36vw)] lg:pr-[25rem]">
           <div className="flex max-w-2xl flex-col">
           <motion.div
@@ -170,6 +170,21 @@ export function HeroSection() {
               Узнать подход
             </Button>
           </motion.div>
+
+          <div className="mt-4 flex flex-wrap gap-2 sm:mt-5">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-400">
+              <User className="size-3.5 text-zinc-500" aria-hidden />
+              Индивидуально
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-400">
+              <Sparkles className="size-3.5 text-zinc-500" aria-hidden />
+              Любой уровень
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-400">
+              <MapPin className="size-3.5 text-zinc-500" aria-hidden />
+              Санкт-Петербург
+            </span>
+          </div>
           </div>
 
         <motion.div

@@ -85,7 +85,7 @@ export function ContactSection() {
             Запись
           </p>
           <h2 className="mt-3 font-display text-3xl font-black tracking-tight text-white sm:text-4xl">
-            Запишитесь на пробный разговор
+            Запишитесь на пробное занятие
           </h2>
           <p className="mt-4 text-zinc-400">
             Оставьте контакты, мы перезвоним, уточним цели и договоримся о времени.
