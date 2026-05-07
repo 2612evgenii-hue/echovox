@@ -41,7 +41,7 @@ export function HeroSection() {
     <section
       ref={wrap}
       onPointerMove={onMove}
-      className="relative isolate min-h-0 overflow-hidden pb-10 pt-20 max-md:flex max-md:min-h-[100svh] max-md:flex-col max-md:pb-[max(1.25rem,env(safe-area-inset-bottom))] max-md:pt-[calc(4rem+env(safe-area-inset-top))] md:h-[100svh] md:max-h-[100svh] md:pb-16 md:pt-24"
+      className="relative isolate min-h-0 overflow-x-hidden overflow-y-hidden pb-10 pt-20 max-md:flex max-md:min-h-[100svh] max-md:flex-col max-md:pb-[max(1.25rem,env(safe-area-inset-bottom))] max-md:pt-[calc(4rem+env(safe-area-inset-top))] md:h-[100svh] md:max-h-[100svh] md:overflow-x-visible md:overflow-y-hidden md:pb-16 md:pt-24"
     >
       <div className="pointer-events-none absolute inset-0 -z-20 overflow-hidden">
         <div
@@ -147,22 +147,22 @@ export function HeroSection() {
           </div>
           </div>
           </div>
-
-          {minMd ? (
-            <div className="pointer-events-none absolute inset-x-0 top-0 bottom-[-4rem] z-10">
-              <Suspense
-                fallback={
-                  <div
-                    className="absolute top-0 bottom-[-4rem] left-auto right-[-26%] h-auto w-[min(62vw,58rem)] max-w-none translate-x-2 animate-pulse rounded-none bg-white/[0.03] lg:right-[-24%] lg:w-[min(60vw,62rem)]"
-                    aria-hidden
-                  />
-                }
-              >
-                <MicrophoneModel reducedMotion={Boolean(reduce)} />
-              </Suspense>
-            </div>
-          ) : null}
       </div>
+
+      {minMd ? (
+        <div className="pointer-events-none absolute inset-x-0 left-0 right-0 top-0 bottom-0 z-10 min-h-0 w-full overflow-x-visible overflow-y-hidden">
+          <Suspense
+            fallback={
+              <div
+                className="absolute inset-y-0 left-auto right-0 h-full min-h-0 w-[min(66vw,56rem)] max-w-none translate-x-3 translate-y-10 animate-pulse rounded-none bg-white/[0.03] max-lg:right-0 max-lg:w-[min(60vw,48rem)] max-lg:translate-x-1 max-lg:translate-y-8 lg:right-0 lg:w-[min(64vw,54rem)] lg:translate-x-4 lg:translate-y-14"
+                aria-hidden
+              />
+            }
+          >
+            <MicrophoneModel reducedMotion={Boolean(reduce)} />
+          </Suspense>
+        </div>
+      ) : null}
     </section>
   )
 }
