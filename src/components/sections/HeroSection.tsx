@@ -142,9 +142,10 @@ export function HeroSection() {
             transition={{ duration: 0.65, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
             className="mt-4 max-w-[34rem] text-[0.9375rem] font-normal leading-[1.62] tracking-[-0.008em] text-zinc-300/90 sm:mt-5 sm:text-base sm:leading-[1.68] md:mt-6 md:text-[1.0625rem] md:leading-[1.68] md:text-zinc-300/95"
           >
-            Echovox, вокальная школа в Санкт-Петербурге: дыхание, опора, звук в
-            микрофоне и уверенность на сцене. Занятия по одному человеку, без
-            спешки и без обещаний «чудо за три встречи».
+            Echovox — небольшая вокальная студия в Петербурге. На занятиях
+            работаем над тем, чтобы голос держался, звучал в микрофоне и не
+            терялся на выступлении. Занятия один на один, без обещаний «чудо за
+            три встречи».
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -178,7 +179,7 @@ export function HeroSection() {
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-400">
               <Sparkles className="size-3.5 text-zinc-500" aria-hidden />
-              Любой уровень
+              С нуля или с опытом
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-400">
               <MapPin className="size-3.5 text-zinc-500" aria-hidden />

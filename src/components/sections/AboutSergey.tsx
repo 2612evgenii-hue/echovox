@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils'
 import sergeyPhoto from '@/assets/sergey.webp'
 
 const PHONE_TEL = 'tel:+79042313359'
-const PHONE_DISPLAY = '8 904 231 33 59'
 
 const traits = [
   { icon: Mic2, label: 'Веду сам' },
@@ -64,9 +63,10 @@ export function AboutSergey() {
                 </div>
 
                 <p className="max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base">
-                  Я сделал Echovox под себя: спокойный темп, понятные шаги и
-                  занятия, которые веду лично. Соединяем технику, микрофон и
-                  сцену без спешки и лишнего шума.
+                  Я открыл Echovox, потому что хотел вести уроки сам. На занятии
+                  говорю простыми словами, что слышу, и даю упражнения, которые
+                  можно повторить дома. Если вы на «нуле» — начнём с базы. Если
+                  уже поёте — шлифуем то, что мешает.
                 </p>
 
                 <div className="flex flex-wrap gap-2">
@@ -93,7 +93,7 @@ export function AboutSergey() {
                     className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-medium text-zinc-200 transition-colors hover:border-white/15 hover:bg-white/[0.06] hover:text-white"
                   >
                     <Phone className="size-4 text-accent-gold" aria-hidden />
-                    {PHONE_DISPLAY}
+                    Позвонить
                   </a>
                   <Button
                     type="button"
